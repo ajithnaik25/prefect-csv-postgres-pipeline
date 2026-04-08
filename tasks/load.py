@@ -3,7 +3,7 @@ import psycopg2
 from psycopg2.extensions import connection
 from psycopg2.extras import execute_batch
 import pandas as pd
-from config.config import DB_CONFIG
+from config.config import DB_CONFIG, DB_TABLE
 
 
 @task(name="load-data", retries=2, retry_delay_seconds=5)
@@ -18,14 +18,16 @@ def load(df: pd.DataFrame):
 
     data = df[["name", "email", "age", "city"]].values.tolist()
 
-    logger.info("Inserting data into table")
+    logger.info(f"Inserting data into table: {DB_TABLE}")
 
     try:
-        execute_batch(cursor, """
-                    INSERT INTO users(name,email,age,city)
-                    VALUES(%s,%s,%s,%s)
-                    ON CONFLICT (email) DO NOTHING  
-                    """, data)
+        query = f"""
+            INSERT INTO {DB_TABLE} (name, email, age, city)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (email) DO NOTHING
+        """
+
+        execute_batch(cursor, query, data)
 
         conn.commit()
 
